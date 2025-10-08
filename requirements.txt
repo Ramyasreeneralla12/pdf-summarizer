@@ -1,5 +1,5 @@
 Flask
-python-dotenv
-openai
 pdfplumber
+python-dotenv
 gunicorn
+requests
