@@ -1,136 +1,103 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI PDF Summarizer</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    body {
-      background-color: #f7f9fc;
-      font-family: "Segoe UI", sans-serif;
-    }
-    .container {
-      max-width: 800px;
-      margin-top: 60px;
-    }
-    .upload-box {
-      background: white;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0px 4px 14px rgba(0,0,0,0.1);
-    }
-    .summary-result {
-      background: #f1f3f5;
-      padding: 25px;
-      border-radius: 10px;
-      margin-top: 30px;
-    }
-    .loading-spinner {
-      display: none;
-      text-align: center;
-      margin-top: 20px;
-    }
-    .list-group-item {
-      background: #ffffff;
-      border: 1px solid #dee2e6;
-      margin-bottom: 8px;
-      border-radius: 5px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Summarizer AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; }
+        .container { max-width: 800px; margin-top: 50px; }
+        .upload-box { background-color: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .summary-result { margin-top: 40px; padding: 20px; background-color: #e9ecef; border-radius: 8px; }
+        .loading-spinner { display: none; text-align: center; margin-top: 20px; }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <h2 class="text-center text-primary mb-4">🧠 AI PDF Summarizer</h2>
-
+<div class="container">
+    <h1 class="text-center mb-4 text-primary">🧠 AI PDF Summarizer</h1>
     <div class="upload-box">
-      <form id="uploadForm">
-        <div class="mb-3">
-          <label for="pdfFile" class="form-label fw-semibold">Select your PDF file</label>
-          <input type="file" class="form-control" id="pdfFile" name="pdf_file" accept=".pdf" required>
-        </div>
-        <button type="submit" class="btn btn-primary w-100" id="submitButton">Summarize PDF</button>
-
-        <div class="loading-spinner" id="loadingSpinner">
-          <div class="spinner-border text-primary" role="status"></div>
-          <p class="mt-2 text-primary">Summarizing your document, please wait...</p>
-        </div>
-      </form>
+        <p class="text-muted text-center">Upload a PDF document to get main points as bullet points.</p>
+        <form id="uploadForm">
+            <div class="mb-3">
+                <label for="pdfFile" class="form-label">Select PDF File (.pdf only)</label>
+                <input class="form-control" type="file" id="pdfFile" name="pdf_file" accept=".pdf" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100" id="submitButton">Summarize Document</button>
+            <div class="loading-spinner" id="loadingSpinner">
+                <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>
+                <p class="mt-2 text-primary">Processing PDF and generating summary...</p>
+            </div>
+        </form>
     </div>
 
-    <!-- SUMMARY SECTION -->
-    <div class="summary-result d-none" id="resultsArea">
-      <h4 class="text-success text-center mb-3">📄 Summary of Your Document</h4>
-      <ul id="summaryList" class="list-group"></ul>
+    <div class="summary-result" id="resultsArea">
+        <h4 class="text-center text-secondary">Summary Results:</h4>
+        <ul id="summaryList" class="list-group list-group-flush mt-3"></ul>
     </div>
 
     <div class="alert mt-3 d-none" role="alert" id="messageAlert"></div>
-  </div>
+</div>
 
-  <script>
-    document.getElementById('uploadForm').addEventListener('submit', async function (e) {
-      e.preventDefault();
+<script>
+document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
 
-      const fileInput = document.getElementById('pdfFile');
-      const file = fileInput.files[0];
-      const submitButton = document.getElementById('submitButton');
-      const loadingSpinner = document.getElementById('loadingSpinner');
-      const summaryList = document.getElementById('summaryList');
-      const messageAlert = document.getElementById('messageAlert');
-      const resultsArea = document.getElementById('resultsArea');
+    const fileInput = document.getElementById('pdfFile');
+    const file = fileInput.files[0];
+    const submitButton = document.getElementById('submitButton');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const summaryList = document.getElementById('summaryList');
+    const messageAlert = document.getElementById('messageAlert');
 
-      // Reset UI
-      messageAlert.classList.add('d-none');
-      resultsArea.classList.add('d-none');
-      summaryList.innerHTML = '';
-      submitButton.disabled = true;
-      loadingSpinner.style.display = 'block';
+    summaryList.innerHTML = '';
+    messageAlert.classList.add('d-none');
+    submitButton.disabled = true;
+    loadingSpinner.style.display = 'block';
 
-      const formData = new FormData();
-      formData.append('pdf_file', file);
+    if (!file || !file.name.toLowerCase().endsWith('.pdf')) {
+        showMessage("Please select a valid PDF (.pdf) file.", "danger");
+        resetUI(); return;
+    }
 
-      try {
-        const response = await fetch('/api/summarize', {
-          method: 'POST',
-          body: formData
-        });
+    const formData = new FormData();
+    formData.append('pdf_file', file);
 
+    try {
+        const response = await fetch('/api/summarize', { method: 'POST', body: formData });
         const data = await response.json();
 
         if (data.status === 'success') {
-          if (data.summary && data.summary.length > 0) {
-            data.summary.forEach(point => {
-              const li = document.createElement('li');
-              li.textContent = point;
-              li.className = 'list-group-item';
-              summaryList.appendChild(li);
+            summaryList.innerHTML = '';
+            data.summary.forEach(bullet => {
+                const li = document.createElement('li');
+                li.className = 'list-group-item';
+                li.textContent = bullet;
+                summaryList.appendChild(li);
             });
-
-            resultsArea.classList.remove('d-none');
-            resultsArea.scrollIntoView({ behavior: 'smooth' });
-            showMessage("✅ Summary generated successfully!", "success");
-          } else {
-            showMessage("⚠️ No summary generated.", "warning");
-          }
+            showMessage("Summary generated successfully!", "success");
         } else {
-          showMessage("❌ " + (data.message || "Something went wrong."), "danger");
+            showMessage(data.message || "Error occurred during summarization.", "danger");
         }
-      } catch (err) {
-        console.error(err);
-        showMessage("Network or server error occurred.", "danger");
-      } finally {
+    } catch (err) {
+        showMessage("A network or server error occurred.", "danger");
+    } finally {
+        resetUI();
+    }
+
+    function showMessage(msg, type) {
+        messageAlert.textContent = msg;
+        messageAlert.classList.remove('d-none', 'alert-danger', 'alert-success');
+        messageAlert.classList.add(`alert-${type}`);
+        document.getElementById('resultsArea').scrollIntoView({behavior: 'smooth'});
+    }
+
+    function resetUI() {
         submitButton.disabled = false;
         loadingSpinner.style.display = 'none';
-      }
-
-      function showMessage(text, type) {
-        messageAlert.textContent = text;
-        messageAlert.className = `alert alert-${type} mt-3`;
-        messageAlert.classList.remove('d-none');
-      }
-    });
-  </script>
-
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    }
+});
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

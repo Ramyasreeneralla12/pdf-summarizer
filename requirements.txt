@@ -1,5 +1,7 @@
+
+gunicorn
 Flask
+requests
 pdfplumber
 python-dotenv
-gunicorn
-requests
+
