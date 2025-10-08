@@ -40,7 +40,7 @@ def summarize_text(text):
     try:
         response = requests.post(API_URL, headers=HEADERS, json=payload)
         if response.status_code != 200:
-            return [f"“Insert a PDF with less than 1000 words"]
+            return [f"Insert a PDF with less than 1000 words"]
         result = response.json()
         summary_text = result[0].get("summary_text", "")
         bullets = ["• " + s.strip() for s in summary_text.split(". ") if s.strip()]
