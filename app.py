@@ -64,4 +64,4 @@ def summarize_pdf():
     return jsonify({"status": "success", "summary": summary}), 200
 
 if __name__ == '__main__':
-    app.run(debug=True, port=7000)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 7000)), debug=True)
